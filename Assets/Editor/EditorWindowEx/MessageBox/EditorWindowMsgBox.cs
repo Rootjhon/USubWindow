@@ -3,12 +3,17 @@ using UnityEditor;
 using System;
 using System.Reflection;
 using System.Collections.Generic;
+using EditorWinEx;
+using EditorWinEx.Internal;
 
 public delegate void DrawActionUseObj(Rect rect, System.Object obj);
 
-public class EditorWindowMsgBox : EditorWindowTool
+/// <summary>
+/// MsgBox组件
+/// </summary>
+public class EditorWindowMsgBox : EditorWindowComponentBase
 {
-    private Dictionary<int, MsgBox> m_MsgBoxs = new Dictionary<int, MsgBox>();
+    private Dictionary<int, EWMsgBoxDrawer> m_MsgBoxs = new Dictionary<int, EWMsgBoxDrawer>();
 
     public bool IsShowing
     {
@@ -21,15 +26,42 @@ public class EditorWindowMsgBox : EditorWindowTool
 
     private System.Object m_Obj;
 
-    public void AddMsgBox(int id, MethodInfo method, System.Object target, float x, float y, float width,
-        float height)
+    /// <summary>
+    /// 添加MsgBox
+    /// </summary>
+    /// <param name="id">id</param>
+    /// <param name="method">绘制方法</param>
+    /// <param name="target">绘制方法对象</param>
+    /// <param name="x"></param>
+    /// <param name="y"></param>
+    /// <param name="width"></param>
+    /// <param name="height"></param>
+    public void AddMsgBox(int id, MethodInfo method, System.Object target, EWRectangle rectangle)
     {
         if (m_MsgBoxs.ContainsKey(id))
         {
             Debug.LogError("错误,已经包含该ID的MsgBox方法:" + id);
             return;
         }
-        MsgBox msgbox = new MsgBox(method, target, this, x, y, width, height);
+        EWMsgBoxMethodDrawer msgbox = new EWMsgBoxMethodDrawer(method, target, rectangle);
+        msgbox.Init();
+        m_MsgBoxs.Add(id, msgbox);
+    }
+
+    /// <summary>
+    /// 添加MsgBox
+    /// </summary>
+    /// <param name="id">id</param>
+    /// <param name="drawer">自定义绘制器对象</param>
+    public void AddMsgBox(int id, EWMsgBoxCustomDrawer drawer)
+    {
+        if (m_MsgBoxs.ContainsKey(id))
+        {
+            Debug.LogError("错误,已经包含该ID的MsgBox方法:" + id);
+            return;
+        }
+        EWMsgBoxObjectDrawer msgbox = new EWMsgBoxObjectDrawer(drawer);
+        msgbox.Init();
         m_MsgBoxs.Add(id, msgbox);
     }
 
@@ -51,30 +83,54 @@ public class EditorWindowMsgBox : EditorWindowTool
             m_Obj = obj;
             m_CurrentShowId = id;
             m_IsShowing = true;
+            m_MsgBoxs[id].Enable();
         }
     }
 
     public void HideMsgBox()
     {
         m_IsShowing = false;
+        if (m_MsgBoxs.ContainsKey(m_CurrentShowId))
+        {
+            m_MsgBoxs[m_CurrentShowId].Disable();
+        }
     }
 
-    protected override void OnRegisterMethod(System.Object container, MethodInfo method, System.Object target, bool isStatic)
+    protected override void OnRegisterMethod(System.Object container, MethodInfo method, System.Object target)
     {
-        System.Object[] atts = method.GetCustomAttributes(typeof(MsgBoxAttribute), false);
+        System.Object[] atts = method.GetCustomAttributes(typeof(EWMsgBoxAttribute), false);
         ParameterInfo[] parameters = method.GetParameters();
         if (atts != null && parameters.Length == 2 && parameters[0].ParameterType == typeof(Rect) && parameters[1].ParameterType == typeof(System.Object))
         {
             for (int j = 0; j < atts.Length; j++)
             {
-                MsgBoxAttribute att = (MsgBoxAttribute)atts[j];
-                AddMsgBox(att.id, method, target, att.x, att.y, att.width, att.height);
+                EWMsgBoxAttribute att = (EWMsgBoxAttribute)atts[j];
+                AddMsgBox(att.id, method, target, att.Rectangle);
             }
         }
     }
 
     protected override void OnRegisterClass(System.Object container, Type type)
     {
+        if (container == null)
+            return;
+        if (!type.IsSubclassOf(typeof(EWMsgBoxCustomDrawer)))
+            return;
+        System.Object[] atts = type.GetCustomAttributes(typeof(EWMsgBoxHandleAttribute), false);
+        for (int i = 0; i < atts.Length; i++)
+        {
+            EWMsgBoxHandleAttribute att = (EWMsgBoxHandleAttribute)atts[i];
+            if (att == null)
+                continue;
+            if (att.targetType != container.GetType())
+                continue;
+            EWMsgBoxCustomDrawer drawer = (EWMsgBoxCustomDrawer) System.Activator.CreateInstance(type);
+            if (drawer == null)
+                continue;
+            drawer.SetContainer(container);
+            drawer.closeAction = HideMsgBox;
+            AddMsgBox(att.id, drawer);
+        }
     }
 
     protected override void OnInit()
@@ -83,70 +139,12 @@ public class EditorWindowMsgBox : EditorWindowTool
 
     protected override void OnDestroy()
     {
-    }
-
-    private class MsgBox
-    {
-
-        private readonly float m_X;
-        private readonly float m_Y;
-        private readonly float m_Width;
-        private readonly float m_Height;
-
-        private DrawActionUseObj m_DrawAction;
-
-        private EditorWindowMsgBox m_Root;
-
-        private bool m_IsStatic;
-
-        public MsgBox(MethodInfo method, System.Object target, EditorWindowMsgBox root, float x, float y, float width, float height)
+        foreach(var kvp in m_MsgBoxs)
         {
-            if (method != null)
-                m_DrawAction = Delegate.CreateDelegate(typeof (DrawActionUseObj), target, method) as DrawActionUseObj;
-            this.m_X = x;
-            this.m_Y = y;
-            this.m_Width = width;
-            this.m_Height = height;
-            this.m_IsStatic = target == null;
-            this.m_Root = root;
-        }
-
-        public void DrawMsgBox(Rect rect, System.Object obj)
-        {
-            DrawMask(rect);
-            Rect main = new Rect(rect.x + rect.width * m_X, rect.y + rect.height * m_Y, rect.width * m_Width, rect.height * m_Height);
-            if (m_IsStatic)
-                DrawGlobalBox(main, obj);
-            else
-                DrawBox(main, obj);
-        }
-
-        private void DrawBox(Rect main, System.Object obj)
-        {
-            GUI.Box(main, "", GUIStyleCache.GetStyle("WindowBackground"));
-            if (m_DrawAction != null)
-                m_DrawAction(main, obj);
-        }
-
-        private void DrawGlobalBox(Rect main, System.Object obj)
-        {
-            GUI.Box(main, string.Empty, GUIStyleCache.GetStyle("WindowBackground"));
-            GUI.Box(new Rect(main.x, main.y, main.width, 18), string.Empty, GUIStyleCache.GetStyle("Toolbar"));
-            if (GUI.Button(new Rect(main.x + main.width - 21, main.y + 4, 13, 11), string.Empty, GUIStyleCache.GetStyle("WinBtnClose")))
+            if (kvp.Value != null)
             {
-                if (m_Root != null)
-                    m_Root.HideMsgBox();
+                kvp.Value.Destroy();
             }
-            if (m_DrawAction != null)
-                m_DrawAction(new Rect(main.x, main.y + 18, main.width, main.height - 18), obj);
-        }
-
-        private void DrawMask(Rect rect)
-        {
-            Color col = GUI.color;
-            GUI.color = Color.black;
-            GUI.Box(rect, "", GUIStyleCache.GetStyle("SelectionRect"));
-            GUI.color = col;
         }
     }
 }
