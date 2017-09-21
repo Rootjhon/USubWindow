@@ -1,26 +1,25 @@
 ﻿using UnityEngine;
 using UnityEditor;
 using System.Collections;
-using System;
 
 /// <summary>
-/// SubWindow自定义SubWindow对象范例
+/// SubWindow基本范例
 /// </summary>
 public class TestWinE : MDIEditorWindow {
 
-    [MenuItem("SubWindow范例/5.自定义SubWindow对象范例")]
+    [MenuItem("Test/TestWinE")]
     static void Init()
     {
         TestWinE win = TestWinA.CreateWindow<TestWinE>();
     }
 
-    [EWSubWindow("SunWinA", EWSubWindowIcon.Game)]
+    [SubWindow("SunWinA", SubWindowIcon.Game)]
     private void SubWinA(Rect main)
     {
         GUI.Label(new Rect(main.x, main.y, main.width, 20), "SubWinA");
     }
 
-    [EWSubWindow("SunWinB", EWSubWindowIcon.Project)]
+    [SubWindow("SunWinB", SubWindowIcon.Project)]
     private void SubWinB(Rect main)
     {
         GUI.Label(new Rect(main.x, main.y, main.width, 20), "SubWinB");
@@ -32,8 +31,8 @@ public class TestWinE : MDIEditorWindow {
     }
 }
 
-[EWSubWindowHandle(typeof(TestWinE))]
-class TestDrawerForTestWinE : SubWindowCustomDrawer
+[SubWindowHandle(typeof(TestWinE))]
+class TestDrawerA : SubWindowCustomObjectDrawer
 {
 
     public override GUIContent Title
@@ -41,16 +40,16 @@ class TestDrawerForTestWinE : SubWindowCustomDrawer
         get { return m_Title; }
     }
 
-    public override EWSubWindowToolbarType toolBar
+    public override SubWindowToolbarType toolBar
     {
         get { return m_ToolBar; }
     }
 
-    private EWSubWindowToolbarType m_ToolBar = EWSubWindowToolbarType.None;
+    private SubWindowToolbarType m_ToolBar = SubWindowToolbarType.None;
 
     private GUIContent m_Title;
 
-    public TestDrawerForTestWinE()
+    public TestDrawerA()
     {
         m_Title = new GUIContent("DefaultTitle");
     }
@@ -64,11 +63,11 @@ class TestDrawerForTestWinE : SubWindowCustomDrawer
         }
         if (GUI.Button(new Rect(mainRect.x, mainRect.y + 20, mainRect.width, 20), "显示Toolbar"))
         {
-            m_ToolBar = EWSubWindowToolbarType.Normal;
+            m_ToolBar = SubWindowToolbarType.Normal;
         }
         if (GUI.Button(new Rect(mainRect.x, mainRect.y + 40, mainRect.width, 20), "关闭Toolbar"))
         {
-            m_ToolBar = EWSubWindowToolbarType.None;
+            m_ToolBar = SubWindowToolbarType.None;
         }
         if (GUI.Button(new Rect(mainRect.x, mainRect.y + 60, mainRect.width, 20), "显示HelpBox"))
         {
@@ -82,71 +81,5 @@ class TestDrawerForTestWinE : SubWindowCustomDrawer
         {
             ((TestWinE) container).TestFunc();
         }
-    }
-
-    public override void Init()
-    {
-        base.Init();
-        Debug.Log("Init");
-    }
-
-    public override void OnDestroy()
-    {
-        base.OnDestroy();
-        Debug.Log("Destroy");
-    }
-
-    public override void OnDisable()
-    {
-        base.OnDisable();
-        Debug.Log("Disbale");
-    }
-
-    public override void OnEnable()
-    {
-        base.OnEnable();
-        Debug.Log("Enalbe");
-    }
-   
-}
-
-[EWSubWindowHandle(typeof(TestWinE))]
-class TestDrawerForTestWinE2 : SubWindowCustomDrawer, ISubWinCustomMenu, ISubWinLock
-{
-    public override GUIContent Title
-    {
-        get { return m_Title; }
-    }
-
-    public override EWSubWindowToolbarType toolBar
-    {
-        get { return EWSubWindowToolbarType.None; }
-    }
-
-    private GUIContent m_Title;
-
-    public TestDrawerForTestWinE2()
-    {
-        m_Title = new GUIContent("DefaultTitle2");
-    }
-
-    public void SetLockActive(bool isLockActive)
-    {
-        if (isLockActive)
-            Debug.Log("窗口上锁");
-        else
-            Debug.Log("窗口解锁");
-    }
-
-    public void AddCustomMenu(GenericMenu menu)
-    {
-        menu.AddItem(new GUIContent("Test1"), false, ClickMenu);
-        menu.AddItem(new GUIContent("Test2"), false, ClickMenu);
-        menu.AddItem(new GUIContent("Test3"), false, ClickMenu);
-    }
-
-    private void ClickMenu()
-    {
-        Debug.Log("按下了菜单");
     }
 }

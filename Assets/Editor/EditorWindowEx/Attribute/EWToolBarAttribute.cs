@@ -8,7 +8,7 @@ using System.Collections;
 /// 工具栏标签
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
-public class EWToolBarAttribute : Attribute
+public class ToolBarAttribute : Attribute
 {
     /// <summary>
     /// 菜单项
@@ -25,9 +25,20 @@ public class EWToolBarAttribute : Attribute
     /// </summary>
     /// <param name="menuItem">菜单项</param>
     /// <param name="priority">优先级-每1000分为一组</param>
-    public EWToolBarAttribute(string menuItem, int priority = 1000)
+    public ToolBarAttribute(string menuItem, int priority = 1000)
     {
         this.menuItem = menuItem;
         this.priority = priority;
+    }
+}
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
+public class ToolBarHandleAttribute : Attribute
+{
+    public Type targetType;
+
+    public ToolBarHandleAttribute(Type targetType)
+    {
+        this.targetType = targetType;
     }
 }
