@@ -21,7 +21,7 @@ internal class SubWindowLayout
     {
         this.m_WindowName = windowName;
         this.m_HandleName = handleName;
-        m_LayoutPrefsKey = Application.bundleIdentifier + "_" + "SubWindowTree_" + m_WindowName;
+        m_LayoutPrefsKey = Application.identifier + "_" + "SubWindowTree_" + m_WindowName;
         if (!string.IsNullOrEmpty(m_HandleName))
             m_LayoutPrefsKey = m_LayoutPrefsKey + "_" + m_HandleName;
         LoadLayoutCfgs();
@@ -156,7 +156,7 @@ internal class SubWindowLayout
 
     private string GetLayoutCfgsPath()
     {
-        string rootPath = "SubWindowTree/" + Application.bundleIdentifier + "/" + m_WindowName;
+        string rootPath = "SubWindowTree/" + Application.identifier + "/" + m_WindowName;
         if (!string.IsNullOrEmpty(m_HandleName))
             rootPath = rootPath + "/" + m_HandleName;
         return Path.Combine(Application.temporaryCachePath, rootPath);
